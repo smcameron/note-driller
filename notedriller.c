@@ -26,6 +26,85 @@
 
 const char natural_notes[] = "ABCDEFG";
 
+static void print_string(int fret)
+{
+	char fretchar;
+	int fret_spacing = 7;
+	printf(" ");
+	for (int i = 0; i < 24; i++) {
+		printf("|");
+		if ((i % 12) == fret - 1)
+			fretchar = '#';
+		else
+			fretchar = '-';
+		for (int j = 0; j < fret_spacing; j++)
+			printf("%c", fretchar);
+		if ((i % 6) == 0)
+			fret_spacing--;
+	}
+	printf("|\n");
+
+}
+
+static void print_fret_numbers(void)
+{
+	int fret_spacing = 6;
+	for (int i = 0; i < 24; i++) {
+		printf("%2d", i);
+		for (int j = 0; j < fret_spacing; j++)
+			printf(" ");
+		if ((i % 6) == 0)
+			fret_spacing--;
+	}
+	printf("24\n");
+}
+
+static int fretnumber(char note, char sharpflat, char string)
+{
+	int fret;
+	const char fretnote[] = "A A#B C C#D D#E F F#G G#";
+
+	if (sharpflat == 'b') {
+		sharpflat = '#';
+		if (note == 'A')
+			note = 'G';
+		else
+			note--;
+	}
+
+
+	for (int i = 0; i < 24; i+=2)
+	{
+		if (fretnote[i] == string && fretnote[i+1] == ' ') {
+			fret = 0;
+			for (int j = i; ; j += 2) {
+				if (j >= 24)
+					j = 0;
+				if (fretnote[j] == note && fretnote[j+1] == sharpflat) {
+					if (fret == 0)
+						fret = 12;
+					return fret;
+				}
+				fret++;
+			}
+		}
+	}
+	return 0;
+}
+
+static void print_fretboard(int note, char sharpflat)
+{
+	printf("\n\n\n");
+	print_string(fretnumber(natural_notes[note], sharpflat, 'E'));
+	print_string(fretnumber(natural_notes[note], sharpflat, 'B'));
+	print_string(fretnumber(natural_notes[note], sharpflat, 'G'));
+	print_string(fretnumber(natural_notes[note], sharpflat, 'D'));
+	print_string(fretnumber(natural_notes[note], sharpflat, 'A'));
+	print_string(fretnumber(natural_notes[note], sharpflat, 'E'));
+	print_fret_numbers();
+	printf("\n\n\n");
+}
+
 int select_note(int last_note)
 {
 	int new_note;
@@ -81,6 +160,7 @@ int main(int argc, char *argv[])
 			fflush(stdout);
 		}
 		printf("\n");
+		print_fretboard(note, sharpflat);
 		usleep(waittime_us);
 	} while (1);
 
