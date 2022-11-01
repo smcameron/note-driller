@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 {
 	float bpm = 40.0;
         struct timeval tv;
-	useconds_t waittime_us;
+	unsigned int waittime_us;
 	int note;
 	char sharpflat;
 
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 			bpm = newbpm;
 	}
 	printf("bpm = %f\n", bpm);
-	waittime_us = (useconds_t) ((60.0 / bpm) * 1000000.0);
+	waittime_us = (unsigned int) ((60.0 / bpm) * 1000000.0);
 
 	note = select_note(-1);
 	do {
