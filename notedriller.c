@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <getopt.h>
 
 const char natural_notes[] = "ABCDEFG";
 
@@ -126,9 +127,56 @@ int select_sharp_flat(int note)
 	return sfc[sf];
 }
 
+static void usage(void)
+{
+	fprintf(stderr, "usage:\n	notedriller [--bpm 120.0]\n");
+	exit(1);
+}
+
+static struct program_options {
+	float bpm;
+} program_options = {
+	.bpm = 40.0,
+};
+
+static struct option options[] = {
+	{ "bpm", required_argument, 0, 'b' },
+	{ NULL, 0, 0, 0 },
+};
+
+static void parse_float_arg(char *arg, float *value)
+{
+	float v;
+	int rc;
+
+	rc = sscanf(arg, "%f", &v);
+	if (rc != 1)
+		usage();
+	*value = v;
+}
+
+static void process_options(int argc, char *argv[], struct program_options *opt)
+{
+	int option_index, c;
+	while (1) {
+		c = getopt_long(argc, argv, "b:", options, &option_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'b':
+			parse_float_arg(optarg, &opt->bpm);
+			break;
+		case '?':
+			usage();
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
-	float bpm = 40.0;
         struct timeval tv;
 	unsigned int waittime_us;
 	int note;
@@ -137,16 +185,10 @@ int main(int argc, char *argv[])
         gettimeofday(&tv, NULL);
         srand(tv.tv_usec);
 
-	if (argc >= 2) {
-		float newbpm;
-		int rc;
+	process_options(argc, argv, &program_options);
 
-		rc = sscanf(argv[1], "%f", &newbpm);
-		if (rc == 1)
-			bpm = newbpm;
-	}
-	printf("bpm = %f\n", bpm);
-	waittime_us = (unsigned int) ((60.0 / bpm) * 1000000.0);
+	printf("bpm = %f\n", program_options.bpm);
+	waittime_us = (unsigned int) ((60.0 / program_options.bpm) * 1000000.0);
 
 	note = select_note(-1);
 	do {
