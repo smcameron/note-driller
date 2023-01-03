@@ -175,17 +175,11 @@ static void process_options(int argc, char *argv[], struct program_options *opt)
 	}
 }
 
-int main(int argc, char *argv[])
+static void note_driller(void)
 {
-        struct timeval tv;
-	unsigned int waittime_us;
 	int note;
 	char sharpflat;
-
-        gettimeofday(&tv, NULL);
-        srand(tv.tv_usec);
-
-	process_options(argc, argv, &program_options);
+	unsigned int waittime_us;
 
 	printf("bpm = %f\n", program_options.bpm);
 	waittime_us = (unsigned int) ((60.0 / program_options.bpm) * 1000000.0);
@@ -205,7 +199,17 @@ int main(int argc, char *argv[])
 		print_fretboard(note, sharpflat);
 		usleep(waittime_us);
 	} while (1);
+}
 
+int main(int argc, char *argv[])
+{
+        struct timeval tv;
+
+        gettimeofday(&tv, NULL);
+        srand(tv.tv_usec);
+
+	process_options(argc, argv, &program_options);
+	note_driller();
 	return 0;
 }
 
