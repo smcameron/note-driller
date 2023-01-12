@@ -41,6 +41,8 @@ const char caged_fret[12][6] = {
 	/* Dm */ { 'x', 'x', '0', '2', '3', '1', },
 };
 
+const char *strings = "EADGBE";
+
 const char natural_notes[] = "ABCDEFG";
 
 static void print_string(int fret)
@@ -191,6 +193,15 @@ int select_note(int last_note)
 	return new_note;
 }
 
+int select_string(int last_string)
+{
+	int new_string;
+	do {
+		new_string = rand() % 5;
+	} while (new_string == last_string);
+	return new_string;
+}
+
 int select_sharp_flat(int note)
 {
 	char sfc[] = " #b";
@@ -214,7 +225,7 @@ static int select_chord_shape(int major_minor)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage:\n	notedriller [--bpm 120.0] [--chord]\n");
+	fprintf(stderr, "usage:\n	notedriller [--bpm 120.0] [--chord | --single-string]\n");
 	exit(1);
 }
 
@@ -223,6 +234,7 @@ static struct program_options {
 	int mode;
 #define NOTE_MODE 0
 #define CHORD_MODE 1
+#define SINGLE_STRING_MODE 2
 } program_options = {
 	.bpm = 40.0,
 	.mode = NOTE_MODE,
@@ -231,6 +243,7 @@ static struct program_options {
 static struct option options[] = {
 	{ "bpm", required_argument, 0, 'b' },
 	{ "chord", no_argument, 0, 'c' },
+	{ "single-string", no_argument, 0, 's' },
 	{ NULL, 0, 0, 0 },
 };
 
@@ -249,7 +262,7 @@ static void process_options(int argc, char *argv[], struct program_options *opt)
 {
 	int option_index, c;
 	while (1) {
-		c = getopt_long(argc, argv, "b:c", options, &option_index);
+		c = getopt_long(argc, argv, "b:cs", options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -258,6 +271,9 @@ static void process_options(int argc, char *argv[], struct program_options *opt)
 			break;
 		case 'c':
 			opt->mode = CHORD_MODE;
+			break;
+		case 's':
+			opt->mode = SINGLE_STRING_MODE;
 			break;
 		case '?':
 			usage();
@@ -268,11 +284,12 @@ static void process_options(int argc, char *argv[], struct program_options *opt)
 	}
 }
 
-static void note_driller(void)
+static void note_driller(int single_string_mode)
 {
 	int note;
 	char sharpflat;
 	unsigned int waittime_us;
+	int string;
 
 	printf("Note drilling mode.\n");
 	printf("bpm = %f\n", program_options.bpm);
@@ -280,9 +297,13 @@ static void note_driller(void)
 
 	note = select_note(-1);
 	do {
+		string = select_string(string);
 		note = select_note(note);
 		sharpflat = select_sharp_flat(note);
-		printf("%c%c", natural_notes[note], sharpflat);
+		if (single_string_mode)
+			printf("%c%c on the %c string", natural_notes[note], sharpflat, strings[string]);
+		else
+			printf("%c%c", natural_notes[note], sharpflat);
 		fflush(stdout);
 		for (int i = 0; i < 12; i++) {
 			usleep(waittime_us);
@@ -290,7 +311,10 @@ static void note_driller(void)
 			fflush(stdout);
 		}
 		printf("\n");
-		print_fretboard(note, sharpflat);
+		if (single_string_mode)
+			print_string(fretnumber(natural_notes[note], sharpflat, strings[string]));
+		else
+			print_fretboard(note, sharpflat);
 		usleep(waittime_us);
 	} while (1);
 }
@@ -339,7 +363,8 @@ int main(int argc, char *argv[])
 	process_options(argc, argv, &program_options);
 	switch (program_options.mode) {
 	case NOTE_MODE:
-		note_driller();
+	case SINGLE_STRING_MODE:
+		note_driller(program_options.mode == SINGLE_STRING_MODE);
 		break;
 	case CHORD_MODE:
 		chord_driller();
