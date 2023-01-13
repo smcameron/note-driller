@@ -311,10 +311,12 @@ static void note_driller(int single_string_mode)
 			fflush(stdout);
 		}
 		printf("\n");
-		if (single_string_mode)
+		if (single_string_mode) {
 			print_string(fretnumber(natural_notes[note], sharpflat, strings[string]));
-		else
+			print_fret_numbers();
+		} else {
 			print_fretboard(note, sharpflat);
+		}
 		usleep(waittime_us);
 	} while (1);
 }
