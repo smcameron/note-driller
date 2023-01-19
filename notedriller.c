@@ -25,6 +25,27 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+static struct program_options {
+	float bpm;
+	int mode;
+#define NOTE_MODE 0
+#define CHORD_MODE 1
+#define SINGLE_STRING_MODE 2
+	int use_color;
+} program_options = {
+	.bpm = 40.0,
+	.mode = NOTE_MODE,
+	.use_color = 0,
+};
+
+static struct option options[] = {
+	{ "bpm", required_argument, 0, 'b' },
+	{ "chord", no_argument, 0, 'c' },
+	{ "single-string", no_argument, 0, 's' },
+	{ "no-color", no_argument, 0, 'C' },
+	{ NULL, 0, 0, 0 },
+};
+
 const char *chord_shape[] = { "C", "A", "G", "E", "D" };
 
 const char caged_fret[12][6] = {
@@ -45,6 +66,49 @@ const char *strings = "EADGBE";
 
 const char natural_notes[] = "ABCDEFG";
 
+#define BLACK 0
+#define RED 1
+#define GREEN 2
+#define YELLOW 3
+#define BLUE 4
+#define MAGENTA 5
+#define CYAN 6
+#define WHITE 7
+
+static const char *color_code[] = {
+	/* Black: */ "\e[0;30m",
+	/* Red: */ "\e[0;31m",
+	/* Green: */ "\e[0;32m",
+	/* Yellow: */ "\e[0;33m",
+	/* Blue: */ " \e[0;34m",
+	/* Magenta: */ "\e[0;35m",
+	/* Cyan: */ "\e[0;36m",
+	/* White: */ "\e[0;37m",
+	/* Bold Black: */ "\e[1;30m",
+	/* Bold Red: */ "\e[1;31m",
+	/* Bold Green: */ "\e[1;32m",
+	/* Bold Yellow: */ "\e[1;33m",
+	/* Bold Blue: */ " \e[1;34m",
+	/* Bold Magenta: */ "\e[1;35m",
+	/* Bold Cyan: */ "\e[1;36m",
+	/* Bold White: */ "\e[1;37m",
+};
+
+static void set_color(int color, int bold)
+{
+	if (!program_options.use_color)
+		return;
+	bold = !!bold;
+	printf("%s", color_code[color + bold * 8]);
+}
+
+static void color_reset(void)
+{
+	if (!program_options.use_color)
+		return;
+	printf("\e[0m");
+}
+
 static void print_string(int fret)
 {
 	char fretchar;
@@ -52,15 +116,19 @@ static void print_string(int fret)
 	printf(" ");
 	for (int i = 0; i < 24; i++) {
 		printf("|");
-		if ((i % 12) + 1 == fret)
+		if ((i % 12) + 1 == fret) {
+			set_color(CYAN, 1);
 			fretchar = '#';
-		else
+		} else {
+			color_reset();
 			fretchar = '-';
+		}
 		for (int j = 0; j < fret_spacing; j++)
 			printf("%c", fretchar);
 		if ((i % 6) == 0)
 			fret_spacing--;
 	}
+	color_reset();
 	printf("|\n");
 
 }
@@ -225,27 +293,9 @@ static int select_chord_shape(int major_minor)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage:\n	notedriller [--bpm 120.0] [--chord | --single-string]\n");
+	fprintf(stderr, "usage:\n	notedriller [--bpm 120.0] [--chord | --single-string] [--no-color]\n");
 	exit(1);
 }
-
-static struct program_options {
-	float bpm;
-	int mode;
-#define NOTE_MODE 0
-#define CHORD_MODE 1
-#define SINGLE_STRING_MODE 2
-} program_options = {
-	.bpm = 40.0,
-	.mode = NOTE_MODE,
-};
-
-static struct option options[] = {
-	{ "bpm", required_argument, 0, 'b' },
-	{ "chord", no_argument, 0, 'c' },
-	{ "single-string", no_argument, 0, 's' },
-	{ NULL, 0, 0, 0 },
-};
 
 static void parse_float_arg(char *arg, float *value)
 {
@@ -262,7 +312,7 @@ static void process_options(int argc, char *argv[], struct program_options *opt)
 {
 	int option_index, c;
 	while (1) {
-		c = getopt_long(argc, argv, "b:cs", options, &option_index);
+		c = getopt_long(argc, argv, "b:cCs", options, &option_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -271,6 +321,9 @@ static void process_options(int argc, char *argv[], struct program_options *opt)
 			break;
 		case 'c':
 			opt->mode = CHORD_MODE;
+			break;
+		case 'C':
+			opt->use_color = 0;
 			break;
 		case 's':
 			opt->mode = SINGLE_STRING_MODE;
@@ -359,6 +412,7 @@ int main(int argc, char *argv[])
 {
         struct timeval tv;
 
+	program_options.use_color = isatty(1); /* only use color if stdout is a terminal */
         gettimeofday(&tv, NULL);
         srand(tv.tv_usec);
 
