@@ -50,16 +50,29 @@ const char *chord_shape[] = { "C", "A", "G", "E", "D" };
 
 const char caged_fret[12][6] = {
 		/* frets for each string, low to high */
-	/* C  */ { 'x', '3', '2', '0', '1', '0', },
-	/* A  */ { 'x', '0', '2', '2', '2', '0', },
+	/* C  */ { '0', '3', '2', '0', '1', '0', },
+	/* A  */ { '0', '0', '2', '2', '2', '0', },
 	/* G  */ { '3', '2', '0', '0', '0', '3', },
 	/* E  */ { '0', '2', '2', '1', '0', '0', },
-	/* D  */ { 'x', 'x', '0', '2', '3', '2', },
-	/* Cm */ { 'x', '3', '1', '0', '1', 'x', },
-	/* Am */ { 'x', '0', '2', '2', '1', '0', },
+	/* D  */ { '2', '0', '0', '2', '3', '2', },
+	/* Cm */ { '3', '3', '1', '0', '1', '3', },
+	/* Am */ { '0', '0', '2', '2', '1', '0', },
 	/* Gm */ { '3', '1', '0', '0', '3', '3', },
 	/* Em */ { '0', '2', '2', '0', '0', '0', },
-	/* Dm */ { 'x', 'x', '0', '2', '3', '1', },
+	/* Dm */ { '1', '0', '0', '2', '3', '1', },
+};
+
+const signed char caged_function[12][6] = { /* '0' == root, 3 == third, -3 == minor third, 5 == fifth, -1 == not used */
+	/* C  */ {  3, 0, 3, 5, 0, 3 },
+	/* A  */ {  5, 0, 5, 0, 3, 5 },
+	/* G  */ {  0, 3, 5, 0, 3, 0 },
+	/* E  */ {  0, 5, 0, 3, 5, 0 },
+	/* D  */ {  3, 5, 0, 5, 0, 3 },
+	/* Cm */ {  5, 0, -3, 5, 0, 5 },
+	/* Am */ {  5, 0, 5, 0, -3, 5 },
+	/* Gm */ {  0, -3, 5, 0, 5, 0 },
+	/* Em */ {  0, 5, 0, -3, 5, 0 },
+	/* Dm */ { -3, 5, 0, -3, 0, -3 },
 };
 
 const char *strings = "EADGBE";
@@ -74,6 +87,11 @@ const char natural_notes[] = "ABCDEFG";
 #define MAGENTA 5
 #define CYAN 6
 #define WHITE 7
+
+#define ROOT_COLOR WHITE
+#define THIRD_COLOR RED
+#define MINOR_THIRD_COLOR MAGENTA
+#define FIFTH_COLOR YELLOW
 
 static const char *color_code[] = {
 	/* Black: */ "\e[0;30m",
@@ -109,7 +127,7 @@ static void color_reset(void)
 	printf("\e[0m");
 }
 
-static void print_string(int fret)
+static void print_string(int fret, int color)
 {
 	char fretchar;
 	int fret_spacing = 7;
@@ -117,7 +135,7 @@ static void print_string(int fret)
 	for (int i = 0; i < 24; i++) {
 		printf("|");
 		if ((i % 12) + 1 == fret) {
-			set_color(CYAN, 1);
+			set_color(color, 1);
 			fretchar = '#';
 		} else {
 			color_reset();
@@ -144,6 +162,21 @@ static void print_fret_numbers(void)
 			fret_spacing--;
 	}
 	printf("24\n");
+}
+
+static void print_color_codes(void)
+{
+	if (!program_options.use_color)
+		return;
+	set_color(ROOT_COLOR, 1);
+	printf("Root  ");
+	set_color(THIRD_COLOR, 1);
+	printf("Third  ");
+	set_color(MINOR_THIRD_COLOR, 1);
+	printf("Minor Third  ");
+	set_color(FIFTH_COLOR, 1);
+	printf("Fifth\n");
+	color_reset();
 }
 
 static int fretnumber(char note, char sharpflat, char string)
@@ -182,12 +215,12 @@ static int fretnumber(char note, char sharpflat, char string)
 static void print_fretboard(int note, char sharpflat)
 {
 	printf("\n\n\n");
-	print_string(fretnumber(natural_notes[note], sharpflat, 'E'));
-	print_string(fretnumber(natural_notes[note], sharpflat, 'B'));
-	print_string(fretnumber(natural_notes[note], sharpflat, 'G'));
-	print_string(fretnumber(natural_notes[note], sharpflat, 'D'));
-	print_string(fretnumber(natural_notes[note], sharpflat, 'A'));
-	print_string(fretnumber(natural_notes[note], sharpflat, 'E'));
+	print_string(fretnumber(natural_notes[note], sharpflat, 'E'), CYAN);
+	print_string(fretnumber(natural_notes[note], sharpflat, 'B'), CYAN);
+	print_string(fretnumber(natural_notes[note], sharpflat, 'G'), CYAN);
+	print_string(fretnumber(natural_notes[note], sharpflat, 'D'), CYAN);
+	print_string(fretnumber(natural_notes[note], sharpflat, 'A'), CYAN);
+	print_string(fretnumber(natural_notes[note], sharpflat, 'E'), CYAN);
 	print_fret_numbers();
 	printf("\n\n\n");
 }
@@ -238,16 +271,34 @@ static void print_chord_on_fretboard(int shape, int chord, char sharpflat)
 	printf("\n\n\n");
 	for (int i = 5; i >= 0; i--) { /* for each string from high to low */
 		int fret = caged_fret[shape][i];
+		int function = caged_function[shape][i];
+		int fret_color;
+		switch (function) {
+		case 0: fret_color = ROOT_COLOR;
+			break;
+		case 3: fret_color = THIRD_COLOR;
+			break;
+		case -3:
+			fret_color = MINOR_THIRD_COLOR;
+			break;
+		case 5:
+			fret_color = FIFTH_COLOR;
+			break;
+		default:
+			fret_color = RED;
+			break;
+		}
 		if (fret == 'x') {
-			print_string(-1);
+			print_string(-1, fret_color);
 			continue;
 		}
 		fret = (fret - '0' + offset) % 12;
 		if (fret == 0)
 			fret = 12;
-		print_string(fret);
+		print_string(fret, fret_color);
 	}
 	print_fret_numbers();
+	print_color_codes();
 	printf("\n\n\n");
 }
 
@@ -365,7 +416,7 @@ static void note_driller(int single_string_mode)
 		}
 		printf("\n");
 		if (single_string_mode) {
-			print_string(fretnumber(natural_notes[note], sharpflat, strings[string]));
+			print_string(fretnumber(natural_notes[note], sharpflat, strings[string]), CYAN);
 			print_fret_numbers();
 		} else {
 			print_fretboard(note, sharpflat);
